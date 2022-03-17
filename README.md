@@ -3,18 +3,20 @@
 Logging will be outputted to the stdout.
 
 ## Example
+
 ```go
 package myPackage
+
 import "github.com/fond-of/logging.go/logger"
 
 func main() {
 	log := logger.New(logger.LvlDebug)
 	log.Infof("Log level is '%s'.", log.GetLevel())
-	
+
 	example(log)
 }
 
-func example(log *logger.Logger){
+func example(log logger.Logger) {
 	log.Debugf("You can just pass the log pointer.")
 }
 ```
