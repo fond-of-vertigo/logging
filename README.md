@@ -7,7 +7,7 @@ Logging will be outputted to the stdout.
 ```go
 package myPackage
 
-import "github.com/fond-of-vertigo/logging"
+import "github.com/fond-of-vertigo/logger"
 
 func main() {
 	log := logger.New(logger.LvlDebug)
