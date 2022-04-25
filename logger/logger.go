@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const (
@@ -23,6 +24,8 @@ type Logger interface {
 	Infof(format string, v ...interface{})
 	Debugf(format string, v ...interface{})
 	Tracef(format string, v ...interface{})
+
+	Infow(message string, keysAndValues ...interface{})
 
 	GetLevel() string
 	IsDebugEnabled() bool
@@ -83,6 +86,11 @@ func (l *instance) Infof(format string, v ...interface{}) {
 	l.logf(LvlInfo, format, v...)
 }
 
+// Infow for structured log messages
+func (l *instance) Infow(message string, keysAndValues ...interface{}) {
+	l.logw(LvlInfo, message, keysAndValues...)
+}
+
 // Debugf should be used for detailed logs
 func (l *instance) Debugf(format string, v ...interface{}) {
 	if l.debugEnabled {
@@ -117,9 +125,44 @@ func GetValidLevel(level string) (string, error) {
 	return "", fmt.Errorf("invalid level: %s", level)
 }
 
-// Logf for default log messages of given level
+// logf for default log messages of given level
 func (l *instance) logf(level string, format string, v ...interface{}) {
 	l.logger.Printf(l.prependMetadata(level, format), v...)
+}
+
+// logw for structured log messages of given level
+func (l *instance) logw(level string, message string, keysAndValues ...interface{}) {
+	now := time.Now()
+	nowFormatted := now.Format("2006-01-02 15:04:05.999999")
+	pkgName, funcName, line := retrieveCallInfo()
+	callerInfo := fmt.Sprintf("%s/%s():%d", pkgName, funcName, line)
+	if err := l.write("{" +
+		"\"level\": \"" + level + "\"" +
+		", \"time\": \"" + nowFormatted + "\"" +
+		", \"caller\": \"" + callerInfo + "\"" +
+		", \"message\": \"" + message + "\""); err != nil {
+		return
+	}
+	for i := 0; i < len(keysAndValues); i++ {
+		key, ok := keysAndValues[i].(string)
+		i++
+		if !ok {
+			continue
+		}
+		value := fmt.Sprintf("%v", keysAndValues[i])
+
+		if err := l.write(", \"" + key + "\": \"" + value + "\""); err != nil {
+			return
+		}
+	}
+	if err := l.write("}\n"); err != nil {
+		return
+	}
+}
+
+func (l *instance) write(text string) error {
+	_, err := l.logger.Writer().Write([]byte(text))
+	return err
 }
 
 func (l *instance) prependMetadata(levelName string, str string) string {
