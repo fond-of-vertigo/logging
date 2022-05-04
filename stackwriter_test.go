@@ -25,6 +25,10 @@ func TestStackWriter_Write(t *testing.T) {
 		msg:     "ABC",
 		wantMsg: "ABC",
 	}, {
+		name:    "Write unicode text",
+		msg:     "ABC äöü 🙂 abc",
+		wantMsg: "ABC äöü 🙂 abc",
+	}, {
 		name:    "Write one line with max length",
 		msg:     makeString(bufSize),
 		wantMsg: makeString(bufSize),
@@ -97,6 +101,9 @@ func TestStackWriter_WriteEscaped(t *testing.T) {
 	}{{
 		name:     "Marshal simple string value",
 		strValue: `abcdefgh`,
+	}, {
+		name:     "Marshal unicode string value",
+		strValue: `abcdefgh äöü 🙂 abc`,
 	}, {
 		name:     "Marshal control chars",
 		strValue: string([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}),

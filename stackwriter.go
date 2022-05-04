@@ -21,7 +21,9 @@ func MakeStackWriter(w io.Writer) StackWriter {
 
 func (sw *StackWriter) WriteEscaped(str string) (n int, err error) {
 	var copyFrom int
-	for i, c := range str {
+	strLength := len(str)
+	for i := 0; i < strLength; i++ {
+		c := str[i]
 		switch c {
 		case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
 			17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
@@ -39,16 +41,16 @@ func (sw *StackWriter) WriteEscaped(str string) (n int, err error) {
 			switch c {
 			case 0, 1, 2, 3, 4, 5, 6, 7, 8:
 				sliceToWrite = []byte(`\u0000`)
-				sliceToWrite[5] = byte('0' + c)
+				sliceToWrite[5] = '0' + c
 			case 11, 12, 14, 15:
 				sliceToWrite = []byte(`\u0000`)
-				sliceToWrite[5] = byte('a' + c - 10)
+				sliceToWrite[5] = 'a' + c - 10
 			case 16, 17, 18, 19, 20, 21, 22, 23, 24, 25:
 				sliceToWrite = []byte(`\u0010`)
-				sliceToWrite[5] = byte('0' + c - 16)
+				sliceToWrite[5] = '0' + c - 16
 			case 26, 27, 28, 29, 30, 31:
 				sliceToWrite = []byte(`\u0010`)
-				sliceToWrite[5] = byte('a' + c - 26)
+				sliceToWrite[5] = 'a' + c - 26
 			case '\r':
 				sliceToWrite = []byte(`\r`)
 			case '\n':
