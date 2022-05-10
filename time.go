@@ -2,7 +2,15 @@ package logger
 
 import "time"
 
-func formatTimeCustom(t time.Time) (ts [26]byte) {
+// FormatLogTime formats the given time with RFC3339Nano format, always uses UTC time zone.
+// It is an optimized version of time.Format(time.RFC3339Nano), 4x faster.
+// The return value is a byte array to avoid heap allocation.
+func FormatLogTime(t time.Time) (ts [27]byte) {
+	zoneName, _ := t.Zone()
+	if zoneName != "UTC" {
+		t = t.UTC()
+	}
+
 	y, m, d := t.Date()
 	copy(ts[0:2], digits[y%10000/100][:])
 	copy(ts[2:4], digits[y%100][:])
@@ -10,7 +18,7 @@ func formatTimeCustom(t time.Time) (ts [26]byte) {
 	copy(ts[5:7], digits[m][:])
 	ts[7] = '-'
 	copy(ts[8:10], digits[d][:])
-	ts[10] = ' '
+	ts[10] = 'T'
 
 	h, min, s := t.Clock()
 	copy(ts[11:13], digits[h][:])
@@ -24,11 +32,13 @@ func formatTimeCustom(t time.Time) (ts [26]byte) {
 	copy(ts[20:22], digits[n/10000][:])
 	copy(ts[22:24], digits[n%10000/100][:])
 	copy(ts[24:26], digits[n%100][:])
+	ts[26] = 'Z'
 
 	return ts
 }
 
-var digits = [][2]byte{{'0', '0'}, {'0', '1'}, {'0', '2'}, {'0', '3'}, {'0', '4'}, {'0', '5'},
+var digits = [][2]byte{
+	{'0', '0'}, {'0', '1'}, {'0', '2'}, {'0', '3'}, {'0', '4'}, {'0', '5'},
 	{'0', '6'}, {'0', '7'}, {'0', '8'}, {'0', '9'}, {'1', '0'}, {'1', '1'},
 	{'1', '2'}, {'1', '3'}, {'1', '4'}, {'1', '5'}, {'1', '6'}, {'1', '7'},
 	{'1', '8'}, {'1', '9'}, {'2', '0'}, {'2', '1'}, {'2', '2'}, {'2', '3'},

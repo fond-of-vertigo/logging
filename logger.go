@@ -112,7 +112,7 @@ func (l *Logger) logw(level string, message string, keysAndValues ...interface{}
 	sw := MakeStackWriter(l.writer)
 	defer sw.Flush()
 
-	now := formatTimeCustom(time.Now())
+	now := FormatLogTime(time.Now())
 
 	sw.Write("{\"level\": \"")
 	sw.WriteEscaped(level)
@@ -128,28 +128,44 @@ func (l *Logger) logw(level string, message string, keysAndValues ...interface{}
 		switch key := keysAndValues[i].(type) {
 		case string:
 			sw.WriteEscaped(key)
+		case fmt.Stringer:
+			sw.WriteEscaped(noescape_stringer(&key).String())
 		default:
-			//writeUnknownValue(&sw, key)
-			sw.WriteEscaped(fmt.Sprintf("%s", key))
+			sw.WriteEscaped(fmt.Sprintf("INVALID_KEY_%v", noescape_interface(&key)))
 		}
-		sw.Write("\": \"")
+		sw.Write("\": ")
 
 		switch value := keysAndValues[i+1].(type) {
 		case string:
+			sw.Write("\"")
 			sw.WriteEscaped(value)
+			sw.Write("\"")
+		case float32:
+			sw.WriteEscaped(fmt.Sprintf("%f", value))
+		case float64:
+			sw.WriteEscaped(fmt.Sprintf("%f", value))
 		case int:
 			sw.WriteEscaped(strconv.Itoa(value))
+		case uint:
+			sw.WriteEscaped(strconv.FormatUint(uint64(value), 10))
+		case bool:
+			sw.WriteEscaped(strconv.FormatBool(value))
+		case fmt.Stringer:
+			sw.Write("\"")
+			sw.WriteEscaped(noescape_stringer(&value).String())
+			sw.Write("\"")
 		default:
-			//sw.WriteEscaped(fmt.Sprintf("%s", value))
+			sw.Write("\"")
+			sw.WriteEscaped(fmt.Sprintf("%v", noescape_interface(&value)))
+			sw.Write("\"")
 		}
-		sw.Write("\"")
 	}
 
 	if includeCallerInfo(level) {
 		funcName, fileName, line := retrieveCallInfo()
-		sw.Write("\", \"caller\": \"")
+		sw.Write(",\n\"caller_func\": \"")
 		sw.WriteEscaped(funcName)
-		sw.Write("() ")
+		sw.Write("\", \"caller_file\": \"")
 		sw.WriteEscaped(fileName)
 		sw.Write(":")
 		sw.Write(strconv.Itoa(line))
@@ -157,11 +173,6 @@ func (l *Logger) logw(level string, message string, keysAndValues ...interface{}
 	}
 
 	sw.Write("}\n")
-}
-
-func writeUnknownValue(sw *StackWriter, value interface{}) {
-	s := fmt.Sprintf("%d", 10)
-	sw.WriteEscaped(s)
 }
 
 func includeCallerInfo(level string) bool {

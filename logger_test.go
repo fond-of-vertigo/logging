@@ -2,9 +2,6 @@ package logger
 
 import (
 	"fmt"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"io"
 	"os"
 	"strconv"
 	"sync"
@@ -104,68 +101,4 @@ func TestLogger_Allocs_Structured(t *testing.T) {
 		logger.Info("Lorem \"ipsum\"", key, longstring)
 	})
 	fmt.Printf("\nAllocs: %f\n", allocs)
-}
-
-func BenchmarkLogger_Info(b *testing.B) {
-	logger := NewWithWriter(LvlInfo, io.Discard)
-	longstring := makeString(50)
-	for i := 0; i < b.N; i++ {
-		logger.Info("Lorem \"ipsum\"",
-			"Key", longstring,
-			"K2", 34875634,
-			"K3", "sdfjiosdfjio")
-	}
-}
-
-func TestLogger_zap_Allocs_Structured(t *testing.T) {
-	encoderCfg := zap.NewProductionEncoderConfig()
-	encoderCfg.TimeKey = "timestamp"
-	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-
-	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), zapcore.AddSync(os.Stdout), zap.InfoLevel)
-	logger := zap.New(core)
-	longstring := makeString(1024)
-	allocs := testing.AllocsPerRun(1, func() {
-		logger.Info("Lorem \"ipsum\"",
-			zap.String("Key", longstring),
-		)
-	})
-	logger.Sync()
-	fmt.Printf("\nAllocs: %f\n", allocs)
-}
-
-func BenchmarkLogger_zap_Infow(b *testing.B) {
-	encoderCfg := zap.NewProductionEncoderConfig()
-	encoderCfg.TimeKey = "timestamp"
-	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-
-	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), zapcore.AddSync(io.Discard), zap.InfoLevel)
-	logger := zap.New(core)
-	defer logger.Sync()
-	longstring := makeString(50)
-	for i := 0; i < b.N; i++ {
-		logger.Info("Lorem \"ipsum\"",
-			zap.String("Key", longstring),
-		)
-	}
-}
-
-func BenchmarkLogger_time_std(b *testing.B) {
-	now := time.Now()
-	for i := 0; i < b.N; i++ {
-		now.Format("2006-01-02 15:04:05.999999")
-	}
-}
-
-func BenchmarkLogger_time_cust(b *testing.B) {
-	now := time.Now()
-	for i := 0; i < b.N; i++ {
-		formatTimeCustom(now)
-	}
-}
-
-func BenchmarkLogger_time_now(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		time.Now()
-	}
 }

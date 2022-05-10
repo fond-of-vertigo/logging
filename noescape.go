@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"io"
 	"unsafe"
 )
@@ -15,6 +16,14 @@ func noescape_bytearray(val *[]byte) []byte {
 
 func noescape_string(val *string) string {
 	return *(*string)(noescape(unsafe.Pointer(val)))
+}
+
+func noescape_stringer(val *fmt.Stringer) fmt.Stringer {
+	return *(*fmt.Stringer)(noescape(unsafe.Pointer(val)))
+}
+
+func noescape_interface(val *interface{}) interface{} {
+	return *(*interface{})(noescape(unsafe.Pointer(val)))
 }
 
 // noescape hides a pointer from escape analysis. It is the identity function
