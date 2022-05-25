@@ -16,7 +16,7 @@ func BenchmarkLogger_Info(b *testing.B) {
 		log.Info("Lorem \"ipsum\"",
 			"Key", longstring,
 			"K2", 34875634,
-			"K3", "sdfjiosdfjio")
+			"K3", 1.25)
 	}
 }
 
@@ -26,13 +26,14 @@ func BenchmarkLogger_zap_Infow(b *testing.B) {
 	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 
 	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), zapcore.AddSync(io.Discard), zap.InfoLevel)
-	logger := zap.New(core)
+	logger := zap.New(core).Sugar()
 	defer logger.Sync()
 	longstring := makeString(50)
 	for i := 0; i < b.N; i++ {
-		logger.Info("Lorem \"ipsum\"",
-			zap.String("Key", longstring),
-		)
+		logger.Infow("Lorem \"ipsum\"",
+			"Key", longstring,
+			"K2", 34875634,
+			"K3", 1.25)
 	}
 }
 

@@ -19,6 +19,23 @@ func MakeStackWriter(w io.Writer) StackWriter {
 	}
 }
 
+func (sw *StackWriter) WriteJSONString(str string) (n int, err error) {
+	n, err = sw.Write("\"")
+	if err != nil {
+		return n, err
+	}
+
+	nw, err := sw.WriteEscaped(noescape_string(&str))
+	n += nw
+	if err != nil {
+		return n, err
+	}
+
+	nw, err = sw.Write("\"")
+	n += nw
+	return n, err
+}
+
 func (sw *StackWriter) WriteEscaped(str string) (n int, err error) {
 	var copyFrom int
 	strLength := len(str)

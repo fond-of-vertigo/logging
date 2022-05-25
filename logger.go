@@ -59,28 +59,28 @@ func (l *Logger) IsTraceEnabled() bool {
 }
 
 func (l *Logger) Error(msg string, keysAndValues ...interface{}) {
-	l.logw(LvlError, msg, keysAndValues...)
+	l.log(LvlError, msg, keysAndValues...)
 }
 
 func (l *Logger) Warn(msg string, keysAndValues ...interface{}) {
-	l.logw(LvlWarn, msg, keysAndValues...)
+	l.log(LvlWarn, msg, keysAndValues...)
 }
 
 func (l *Logger) Info(msg string, keysAndValues ...interface{}) {
-	l.logw(LvlInfo, msg, keysAndValues...)
+	l.log(LvlInfo, msg, keysAndValues...)
 }
 
 // Debug should be used for detailed logs
 func (l *Logger) Debug(msg string, keysAndValues ...interface{}) {
 	if l.debugEnabled {
-		l.logw(LvlDebug, msg, keysAndValues...)
+		l.log(LvlDebug, msg, keysAndValues...)
 	}
 }
 
 // Trace should be used for dumps of payloads or similar
 func (l *Logger) Trace(msg string, keysAndValues ...interface{}) {
 	if l.traceEnabled {
-		l.logw(LvlTrace, msg, keysAndValues...)
+		l.log(LvlTrace, msg, keysAndValues...)
 	}
 }
 
@@ -104,7 +104,7 @@ func GetValidLevel(level string) (string, error) {
 	return "", fmt.Errorf("invalid level: %s", level)
 }
 
-func (l *Logger) logw(level string, message string, keysAndValues ...interface{}) {
+func (l *Logger) log(level string, message string, keysAndValues ...interface{}) {
 	// We must lock here, because we don't know for sure if the current io.writer uses locking
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
@@ -114,58 +114,26 @@ func (l *Logger) logw(level string, message string, keysAndValues ...interface{}
 
 	now := FormatLogTime(time.Now())
 
-	sw.Write("{\"level\": \"")
-	sw.WriteEscaped(level)
-	sw.Write("\", \"ts\": \"")
-	sw.Write(string(now[:]))
-	sw.Write("\", \"msg\": \"")
-	sw.WriteEscaped(message)
-	sw.Write("\"")
+	sw.Write("{\"ts\": ")
+	sw.WriteJSONString(string(now[:]))
+	sw.Write(", \"level\": ")
+	sw.WriteJSONString(level)
+	sw.Write(", \"message\": ")
+	sw.WriteJSONString(message)
 
 	fn := len(keysAndValues)
 	for i := 0; i+1 < fn; i += 2 {
-		sw.Write(", \"")
-		switch key := keysAndValues[i].(type) {
-		case string:
-			sw.WriteEscaped(key)
-		case fmt.Stringer:
-			sw.WriteEscaped(noescape_stringer(&key).String())
-		default:
-			sw.WriteEscaped(fmt.Sprintf("INVALID_KEY_%v", noescape_interface(&key)))
-		}
-		sw.Write("\": ")
-
-		switch value := keysAndValues[i+1].(type) {
-		case string:
-			sw.Write("\"")
-			sw.WriteEscaped(value)
-			sw.Write("\"")
-		case float32:
-			sw.WriteEscaped(fmt.Sprintf("%f", value))
-		case float64:
-			sw.WriteEscaped(fmt.Sprintf("%f", value))
-		case int:
-			sw.WriteEscaped(strconv.Itoa(value))
-		case uint:
-			sw.WriteEscaped(strconv.FormatUint(uint64(value), 10))
-		case bool:
-			sw.WriteEscaped(strconv.FormatBool(value))
-		case fmt.Stringer:
-			sw.Write("\"")
-			sw.WriteEscaped(noescape_stringer(&value).String())
-			sw.Write("\"")
-		default:
-			sw.Write("\"")
-			sw.WriteEscaped(fmt.Sprintf("%v", noescape_interface(&value)))
-			sw.Write("\"")
-		}
+		sw.Write(", ")
+		encodeKey(&sw, noescape_interface(&keysAndValues[i]))
+		sw.Write(": ")
+		encodeValue(&sw, noescape_interface(&keysAndValues[i+1]))
 	}
 
 	if includeCallerInfo(level) {
 		funcName, fileName, line := retrieveCallInfo()
-		sw.Write(",\n\"caller_func\": \"")
-		sw.WriteEscaped(funcName)
-		sw.Write("\", \"caller_file\": \"")
+		sw.Write(", \"caller_func\": ")
+		sw.WriteJSONString(funcName)
+		sw.Write(", \"caller_file\": \"")
 		sw.WriteEscaped(fileName)
 		sw.Write(":")
 		sw.Write(strconv.Itoa(line))

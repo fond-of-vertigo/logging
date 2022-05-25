@@ -22,6 +22,14 @@ func noescape_stringer(val *fmt.Stringer) fmt.Stringer {
 	return *(*fmt.Stringer)(noescape(unsafe.Pointer(val)))
 }
 
+func noescape_jsonvaluewriter(val *JSONValueWriter) JSONValueWriter {
+	return *(*JSONValueWriter)(noescape(unsafe.Pointer(val)))
+}
+
+func noescape_stackwriterptr(val *StackWriter) *StackWriter {
+	return (*StackWriter)(noescape(unsafe.Pointer(val)))
+}
+
 func noescape_interface(val *interface{}) interface{} {
 	return *(*interface{})(noescape(unsafe.Pointer(val)))
 }

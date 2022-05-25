@@ -153,12 +153,12 @@ func TestStackWriter_WritesEscaped_ZeroAlloc(t *testing.T) {
 	longString := makeString(16 * 1024)
 	allocs := testing.AllocsPerRun(1, func() {
 		sw := MakeStackWriter(io.Discard)
-		n, err := sw.WriteEscaped(longString)
+		n, err := sw.WriteJSONString(longString)
 		if err != nil {
 			t.Errorf("WriteString error: %s", err)
 		}
-		if n != len(longString) {
-			t.Errorf("wrote %d bytes, expected %d bytes", n, len(longString))
+		if n != len(longString)+2 {
+			t.Errorf("wrote %d bytes, expected %d bytes", n, len(longString)+2)
 		}
 	})
 

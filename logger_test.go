@@ -96,9 +96,15 @@ func TestLogger_Perf_Structured(t *testing.T) {
 func TestLogger_Allocs_Structured(t *testing.T) {
 	logger := NewWithWriter(LvlInfo, os.Stdout)
 	key := makeString(10)
-	longstring := makeString(32768)
+	longstring := makeString(4096)
 	allocs := testing.AllocsPerRun(1, func() {
-		logger.Info("Lorem \"ipsum\"", key, longstring)
+		logger.Info("Lorem \"ipsum\"",
+			key, longstring,
+			"int", 1,
+			"bool", true)
 	})
-	fmt.Printf("\nAllocs: %f\n", allocs)
+
+	if allocs > 0.0 {
+		t.Errorf("Allocs detected! Want 0 allocs, got %f", allocs)
+	}
 }
