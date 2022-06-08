@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -9,7 +11,7 @@ import (
 	"time"
 )
 
-func TestLogger_Infof(t *testing.T) {
+func TestLogger_Info(t *testing.T) {
 	logger := New(LvlInfo)
 	for i := 0; i < 1000; i++ {
 		logger.Info("Test %d: %s", i, "Lorem ipsum")
@@ -23,7 +25,19 @@ func TestLogger_Infof(t *testing.T) {
 			"Test", i,
 		)
 	}
-}*/
+
+	if actualMsg.Message != "Test msg" {
+		t.Errorf("Message is incorrect, Expected %s, Actual %s", "Test msg", actualMsg.Message)
+	}
+
+	if actualMsg.Value == "" {
+		t.Errorf("Key `Key1` does not exist")
+	}
+
+	if actualMsg.Value != "Value1" {
+		t.Errorf("Value is incorrect, Expected %s, Actual %s", "Value1", actualMsg.Value)
+	}
+}
 
 func TestLogger_MultiThread(t *testing.T) {
 	tests := []struct {
@@ -55,7 +69,7 @@ func TestLogger_MultiThread(t *testing.T) {
 	}
 }
 
-func TestLogger_Perf(t *testing.T) {
+func TestLogger_Perf_Structured(t *testing.T) {
 	tests := []struct {
 		count int
 	}{
@@ -66,31 +80,12 @@ func TestLogger_Perf(t *testing.T) {
 			logger := NewWithWriter(LvlInfo, os.NewFile(0, os.DevNull))
 			start := time.Now()
 			for i := 0; i < tt.count; i++ {
-				logger.Info("Test %d: %s", i, "Lorem ipsum")
+				logger.Info("Lorem ipsum", "Test ", i)
 			}
 			elapsed := time.Since(start)
 			fmt.Printf("Logging %d took %s\n", tt.count, elapsed)
 		})
 	}
-}
-
-func TestLogger_Perf_Structured(t *testing.T) {
-	/*tests := []struct {
-		count int
-	}{
-		{count: 1000 * 1000},
-	}
-	for _, tt := range tests {
-		t.Run(strconv.Itoa(tt.count), func(t *testing.T) {
-			logger := NewWithWriter(LvlInfo, os.NewFile(0, os.DevNull))
-			start := time.Now()
-			for i := 0; i < tt.count; i++ {
-				logger.Infow("Lorem ipsum", "Test ", i)
-			}
-			elapsed := time.Since(start)
-			fmt.Printf("Logging %d took %s\n", tt.count, elapsed)
-		})
-	}*/
 }
 
 func TestLogger_Allocs_Structured(t *testing.T) {
