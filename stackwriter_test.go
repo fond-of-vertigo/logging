@@ -73,24 +73,6 @@ func TestStackWriter_Write(t *testing.T) {
 	}
 }
 
-func TestStackWriter_ZeroAlloc(t *testing.T) {
-	longString := makeString(16 * 1024)
-	allocs := testing.AllocsPerRun(1, func() {
-		sw := MakeStackWriter(os.Stdout)
-		n, err := sw.Write(longString)
-		if err != nil {
-			t.Errorf("WriteString error: %s", err)
-		}
-		if n != len(longString) {
-			t.Errorf("wrote %d bytes, expected %d bytes", n, len(longString))
-		}
-	})
-
-	if allocs > 0.0 {
-		t.Errorf("Allocs detected! Want 0 allocs, got %f", allocs)
-	}
-}
-
 func TestStackWriter_WriteEscaped(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -149,6 +131,24 @@ func TestStackWriter_WriteEscaped(t *testing.T) {
 	}
 }
 
+func TestStackWriter_ZeroAlloc(t *testing.T) {
+	longString := makeString(16 * 1024)
+	allocs := testing.AllocsPerRun(1, func() {
+		sw := MakeStackWriter(os.Stdout)
+		n, err := sw.Write(longString)
+		if err != nil {
+			t.Errorf("WriteString error: %s", err)
+		}
+		if n != len(longString) {
+			t.Errorf("wrote %d bytes, expected %d bytes", n, len(longString))
+		}
+	})
+
+	if allocs > 0.0 {
+		t.Errorf("Allocs detected! Want 0 allocs, got %f", allocs)
+	}
+}
+
 func TestStackWriter_WritesEscaped_ZeroAlloc(t *testing.T) {
 	longString := makeString(16 * 1024)
 	allocs := testing.AllocsPerRun(1, func() {
@@ -168,11 +168,11 @@ func TestStackWriter_WritesEscaped_ZeroAlloc(t *testing.T) {
 }
 
 func mustMarshalJSONString(str string) string {
-	json, err := json.Marshal(str)
+	j, err := json.Marshal(str)
 	if err != nil {
 		panic(err)
 	}
-	return string(json[1 : len(json)-1])
+	return string(j[1 : len(j)-1])
 }
 
 func makeString(length int) string {
