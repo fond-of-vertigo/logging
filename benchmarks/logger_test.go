@@ -13,12 +13,14 @@ import (
 func BenchmarkLogger_Info(b *testing.B) {
 	log := logger.NewWithWriter(logger.LvlInfo, io.Discard)
 	longstring := makeString(50)
-	for i := 0; i < b.N; i++ {
+	alloc := testing.AllocsPerRun(b.N, func() {
 		log.Info("Lorem \"ipsum\"",
 			"Key", longstring,
 			"K2", 34875634,
 			"K3", 1.25)
-	}
+	})
+	b.Logf("Allocations:  %f", alloc)
+
 }
 
 func BenchmarkLogger_zap_Infow(b *testing.B) {
@@ -30,20 +32,22 @@ func BenchmarkLogger_zap_Infow(b *testing.B) {
 	logger := zap.New(core).Sugar()
 	defer logger.Sync()
 	longstring := makeString(50)
-	for i := 0; i < b.N; i++ {
+	alloc := testing.AllocsPerRun(b.N, func() {
 		logger.Infow("Lorem \"ipsum\"",
 			"Key", longstring,
 			"K2", 34875634,
 			"K3", 1.25)
-	}
+	})
+	b.Logf("Allocations:  %f", alloc)
 }
 
 func BenchmarkLogger_zerolog_Info(b *testing.B) {
 	log := zerolog.New(io.Discard).With().Timestamp().Logger()
 	longstring := makeString(50)
-	for i := 0; i < b.N; i++ {
+	alloc := testing.AllocsPerRun(b.N, func() {
 		log.Info().Str("Key", longstring).Int("K2", 34875634).Float64("K3", 1.25).Msg("Lorem \"ipsum\"")
-	}
+	})
+	b.Logf("Allocations:  %f", alloc)
 }
 
 func makeString(length int) string {
