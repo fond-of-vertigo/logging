@@ -2,6 +2,7 @@ package benchmarks
 
 import (
 	"github.com/fond-of-vertigo/logger"
+	"github.com/rs/zerolog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"io"
@@ -34,6 +35,14 @@ func BenchmarkLogger_zap_Infow(b *testing.B) {
 			"Key", longstring,
 			"K2", 34875634,
 			"K3", 1.25)
+	}
+}
+
+func BenchmarkLogger_zerolog_Info(b *testing.B) {
+	log := zerolog.New(io.Discard).With().Timestamp().Logger()
+	longstring := makeString(50)
+	for i := 0; i < b.N; i++ {
+		log.Info().Str("Key", longstring).Int("K2", 34875634).Float64("K3", 1.25).Msg("Lorem \"ipsum\"")
 	}
 }
 
