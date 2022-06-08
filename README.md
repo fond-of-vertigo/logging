@@ -7,22 +7,21 @@ Logging will be outputted to the stdout.
 ```go
 package myPackage
 
-import "github.com/fond-of-vertigo/logging"
+import "github.com/fond-of-vertigo/logger"
 
 func main() {
 	log := logger.New(logger.LvlDebug)
-	log.Infof("Log level is '%s'.", log.GetLevel())
 
 	example(log)
-	
+
 	// Structured logging
-	log.Infow("Log message",
+	log.Info("Log message",
 		"key1", "value1",
 		"key2", "value2")
 }
 
 func example(log logger.Logger) {
-	log.Debugf("You can just pass the log pointer.")
+	log.Debug("You can just pass the log pointer.")
 }
 ```
 
