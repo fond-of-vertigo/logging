@@ -19,15 +19,28 @@ const (
 	LvlTrace = "TRACE"
 )
 
+type Logger interface {
+	Error(msg string, keysAndValues ...interface{})
+	Warn(msg string, keysAndValues ...interface{})
+	Info(msg string, keysAndValues ...interface{})
+	Debug(msg string, keysAndValues ...interface{})
+	Trace(msg string, keysAndValues ...interface{})
+
+	GetLevel() string
+	IsDebugEnabled() bool
+	IsTraceEnabled() bool
+	// Levels INFO, WARN and ERROR are always enabled.
+}
+
 // New created a logger with given level
-func New(level string) *Logger {
+func New(level string) Logger {
 	return NewWithWriter(level, os.Stdout)
 }
 
 // NewWithWriter created a logger with given level and writer
-func NewWithWriter(levelParam string, writer io.Writer) *Logger {
+func NewWithWriter(levelParam string, writer io.Writer) *instance {
 	level := MustGetValidLevel(levelParam)
-	return &Logger{
+	return &instance{
 		level:        level,
 		writer:       writer,
 		debugEnabled: level == LvlDebug || level == LvlTrace,
@@ -35,7 +48,7 @@ func NewWithWriter(levelParam string, writer io.Writer) *Logger {
 	}
 }
 
-type Logger struct {
+type instance struct {
 	writer       io.Writer
 	level        string
 	debugEnabled bool
@@ -44,41 +57,41 @@ type Logger struct {
 }
 
 // GetLevel returns the level in a thread safe way
-func (l *Logger) GetLevel() string {
+func (l *instance) GetLevel() string {
 	return l.level
 }
 
 // IsDebugEnabled returns true if debug logging is enabled
-func (l *Logger) IsDebugEnabled() bool {
+func (l *instance) IsDebugEnabled() bool {
 	return l.debugEnabled
 }
 
 // IsTraceEnabled returns true if trace logging is enabled
-func (l *Logger) IsTraceEnabled() bool {
+func (l *instance) IsTraceEnabled() bool {
 	return l.traceEnabled
 }
 
-func (l *Logger) Error(msg string, keysAndValues ...interface{}) {
+func (l *instance) Error(msg string, keysAndValues ...interface{}) {
 	l.log(LvlError, msg, keysAndValues...)
 }
 
-func (l *Logger) Warn(msg string, keysAndValues ...interface{}) {
+func (l *instance) Warn(msg string, keysAndValues ...interface{}) {
 	l.log(LvlWarn, msg, keysAndValues...)
 }
 
-func (l *Logger) Info(msg string, keysAndValues ...interface{}) {
+func (l *instance) Info(msg string, keysAndValues ...interface{}) {
 	l.log(LvlInfo, msg, keysAndValues...)
 }
 
 // Debug should be used for detailed logs
-func (l *Logger) Debug(msg string, keysAndValues ...interface{}) {
+func (l *instance) Debug(msg string, keysAndValues ...interface{}) {
 	if l.debugEnabled {
 		l.log(LvlDebug, msg, keysAndValues...)
 	}
 }
 
 // Trace should be used for dumps of payloads or similar
-func (l *Logger) Trace(msg string, keysAndValues ...interface{}) {
+func (l *instance) Trace(msg string, keysAndValues ...interface{}) {
 	if l.traceEnabled {
 		l.log(LvlTrace, msg, keysAndValues...)
 	}
@@ -104,7 +117,7 @@ func GetValidLevel(level string) (string, error) {
 	return "", fmt.Errorf("invalid level: %s", level)
 }
 
-func (l *Logger) log(level string, message string, keysAndValues ...interface{}) {
+func (l *instance) log(level string, message string, keysAndValues ...interface{}) {
 	// We must lock here, because we don't know for sure if the current io.writer uses locking
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
