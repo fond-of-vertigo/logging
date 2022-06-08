@@ -18,12 +18,29 @@ func TestLogger_Info(t *testing.T) {
 	}
 }
 
-/*func TestLogger_InfoW(t *testing.T) {
-	logger := New(LvlInfo)
-	for i := 0; i < 1000; i++ {
-		logger.Infow("Lorem ipsum",
-			"Test", i,
-		)
+func TestLogger_Info_CheckOutput(t *testing.T) {
+	type logMsg struct {
+		Timestamp string `json:"ts"`
+		Level     string `json:"level"`
+		Message   string `json:"message"`
+		Value     string `json:"Key1"`
+	}
+
+	out := bytes.NewBufferString("")
+	logger := NewWithWriter(LvlInfo, out)
+	logger.Info("Test msg", "Key1", "Value1")
+
+	actualMsg := logMsg{}
+	if err := json.Unmarshal(out.Bytes(), &actualMsg); err != nil {
+		t.Error(err)
+	}
+
+	if len(actualMsg.Timestamp) <= 0 {
+		t.Errorf("Timestamp cannot be empty.")
+	}
+
+	if actualMsg.Level != logger.GetLevel() {
+		t.Errorf("Level is incorrect, Expected %s, Actual %s", logger.GetLevel(), actualMsg.Level)
 	}
 
 	if actualMsg.Message != "Test msg" {
