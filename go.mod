@@ -1,3 +1,3 @@
 module github.com/fond-of-vertigo/logger
 
-go 1.17
+go 1.18

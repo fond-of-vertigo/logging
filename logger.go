@@ -3,10 +3,12 @@ package logger
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 const (
@@ -18,11 +20,11 @@ const (
 )
 
 type Logger interface {
-	Errorf(format string, v ...interface{})
-	Warnf(format string, v ...interface{})
-	Infof(format string, v ...interface{})
-	Debugf(format string, v ...interface{})
-	Tracef(format string, v ...interface{})
+	Error(msg string, keysAndValues ...interface{})
+	Warn(msg string, keysAndValues ...interface{})
+	Info(msg string, keysAndValues ...interface{})
+	Debug(msg string, keysAndValues ...interface{})
+	Trace(msg string, keysAndValues ...interface{})
 
 	GetLevel() string
 	IsDebugEnabled() bool
@@ -36,21 +38,22 @@ func New(level string) Logger {
 }
 
 // NewWithWriter created a logger with given level and writer
-func NewWithWriter(levelParam string, writer io.Writer) Logger {
+func NewWithWriter(levelParam string, writer io.Writer) *instance {
 	level := MustGetValidLevel(levelParam)
 	return &instance{
 		level:        level,
-		logger:       log.New(writer, "", log.Ldate|log.Ltime|log.Lmicroseconds),
+		writer:       writer,
 		debugEnabled: level == LvlDebug || level == LvlTrace,
 		traceEnabled: level == LvlTrace,
 	}
 }
 
 type instance struct {
-	logger       *log.Logger
+	writer       io.Writer
 	level        string
 	debugEnabled bool
 	traceEnabled bool
+	mutex        sync.Mutex
 }
 
 // GetLevel returns the level in a thread safe way
@@ -68,32 +71,29 @@ func (l *instance) IsTraceEnabled() bool {
 	return l.traceEnabled
 }
 
-// Errorf for errors, prints to stderr
-func (l *instance) Errorf(format string, v ...interface{}) {
-	l.logf(LvlError, format, v...)
+func (l *instance) Error(msg string, keysAndValues ...interface{}) {
+	l.log(LvlError, msg, keysAndValues...)
 }
 
-// Warnf for default log messages
-func (l *instance) Warnf(format string, v ...interface{}) {
-	l.logf(LvlWarn, format, v...)
+func (l *instance) Warn(msg string, keysAndValues ...interface{}) {
+	l.log(LvlWarn, msg, keysAndValues...)
 }
 
-// Infof for default log messages
-func (l *instance) Infof(format string, v ...interface{}) {
-	l.logf(LvlInfo, format, v...)
+func (l *instance) Info(msg string, keysAndValues ...interface{}) {
+	l.log(LvlInfo, msg, keysAndValues...)
 }
 
-// Debugf should be used for detailed logs
-func (l *instance) Debugf(format string, v ...interface{}) {
+// Debug should be used for detailed logs
+func (l *instance) Debug(msg string, keysAndValues ...interface{}) {
 	if l.debugEnabled {
-		l.logf(LvlDebug, format, v...)
+		l.log(LvlDebug, msg, keysAndValues...)
 	}
 }
 
-// Tracef should be used for dumps of payloads or similar
-func (l *instance) Tracef(format string, v ...interface{}) {
+// Trace should be used for dumps of payloads or similar
+func (l *instance) Trace(msg string, keysAndValues ...interface{}) {
 	if l.traceEnabled {
-		l.logf(LvlTrace, format, v...)
+		l.log(LvlTrace, msg, keysAndValues...)
 	}
 }
 
@@ -117,27 +117,53 @@ func GetValidLevel(level string) (string, error) {
 	return "", fmt.Errorf("invalid level: %s", level)
 }
 
-// Logf for default log messages of given level
-func (l *instance) logf(level string, format string, v ...interface{}) {
-	l.logger.Printf(l.prependMetadata(level, format), v...)
+func (l *instance) log(level string, message string, keysAndValues ...interface{}) {
+	// We must lock here, because we don't know for sure if the current io.writer uses locking
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	sw := MakeStackWriter(l.writer)
+	defer sw.Flush()
+
+	now := FormatLogTime(time.Now())
+
+	sw.Write("{\"ts\": ")
+	sw.WriteJSONString(string(now[:]))
+	sw.Write(", \"level\": ")
+	sw.WriteJSONString(level)
+	sw.Write(", \"message\": ")
+	sw.WriteJSONString(message)
+
+	fn := len(keysAndValues)
+	for i := 0; i+1 < fn; i += 2 {
+		sw.Write(", ")
+		encodeKey(&sw, noescape_interface(&keysAndValues[i]))
+		sw.Write(": ")
+		encodeValue(&sw, noescape_interface(&keysAndValues[i+1]))
+	}
+
+	if includeCallerInfo(level) {
+		funcName, fileName, line := retrieveCallInfo()
+		sw.Write(", \"caller_func\": ")
+		sw.WriteJSONString(funcName)
+		sw.Write(", \"caller_file\": \"")
+		sw.WriteEscaped(fileName)
+		sw.Write(":")
+		sw.Write(strconv.Itoa(line))
+		sw.Write("\"")
+	}
+
+	sw.Write("}\n")
 }
 
-func (l *instance) prependMetadata(levelName string, str string) string {
-	pkgName, funcName, line := retrieveCallInfo()
-	return fmt.Sprintf("%s [%s/%s():%d] %s", levelName, pkgName, funcName, line, str)
+func includeCallerInfo(level string) bool {
+	return level == LvlError || level == LvlWarn
 }
 
-func retrieveCallInfo() (pkgName string, funcName string, line int) {
-	pc, _, line, ok := runtime.Caller(4)
+func retrieveCallInfo() (funcName string, file string, line int) {
+	pc, file, line, ok := runtime.Caller(3)
 	if !ok {
 		return "", "", -1
 	}
-	funcPath := runtime.FuncForPC(pc).Name()
-	lastSlash := strings.LastIndexByte(funcPath, '/')
-	if lastSlash < 0 {
-		lastSlash = 0
-	}
-	lastDot := strings.LastIndexByte(funcPath[lastSlash:], '.') + lastSlash
-
-	return funcPath[lastSlash:lastDot], funcPath[lastDot+1:], line
+	return runtime.FuncForPC(pc).Name(), file, line
 }
