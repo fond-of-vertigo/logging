@@ -55,10 +55,10 @@ func NewWithWriter(levelParam string, writer io.Writer) Logger {
 type instance struct {
 	writer       io.Writer
 	level        string
+	name         string
 	debugEnabled bool
 	traceEnabled bool
 	mutex        sync.Mutex
-	name         string
 }
 
 func (l *instance) setName(n string) {
@@ -87,8 +87,8 @@ func (l *instance) clone() Logger {
 		level:        l.level,
 		name:         l.name,
 		writer:       l.writer,
-		debugEnabled: l.IsDebugEnabled(),
-		traceEnabled: l.IsTraceEnabled(),
+		debugEnabled: l.debugEnabled,
+		traceEnabled: l.traceEnabled,
 	}
 }
 
