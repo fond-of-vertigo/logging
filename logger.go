@@ -29,6 +29,10 @@ type Logger interface {
 	GetLevel() string
 	IsDebugEnabled() bool
 	IsTraceEnabled() bool
+	Named(n string) Logger
+	clone() Logger
+	setName(n string)
+	getName() string
 	// Levels INFO, WARN and ERROR are always enabled.
 }
 
@@ -38,7 +42,7 @@ func New(level string) Logger {
 }
 
 // NewWithWriter created a logger with given level and writer
-func NewWithWriter(levelParam string, writer io.Writer) *instance {
+func NewWithWriter(levelParam string, writer io.Writer) Logger {
 	level := MustGetValidLevel(levelParam)
 	return &instance{
 		level:        level,
@@ -54,6 +58,38 @@ type instance struct {
 	debugEnabled bool
 	traceEnabled bool
 	mutex        sync.Mutex
+	name         string
+}
+
+func (l *instance) setName(n string) {
+	l.name = n
+}
+
+func (l *instance) getName() string {
+	return l.name
+}
+
+func (l *instance) Named(n string) Logger {
+	if n == "" {
+		return l
+	}
+	log := l.clone()
+	if log.getName() == "" {
+		log.setName(n)
+	} else {
+		log.setName(strings.Join([]string{l.name, n}, "."))
+	}
+	return log
+}
+
+func (l *instance) clone() Logger {
+	return &instance{
+		level:        l.level,
+		name:         l.name,
+		writer:       l.writer,
+		debugEnabled: l.IsDebugEnabled(),
+		traceEnabled: l.IsTraceEnabled(),
+	}
 }
 
 // GetLevel returns the level in a thread safe way
@@ -131,6 +167,10 @@ func (l *instance) log(level string, message string, keysAndValues ...interface{
 	sw.WriteJSONString(string(now[:]))
 	sw.Write(", \"level\": ")
 	sw.WriteJSONString(level)
+	if l.name != "" {
+		sw.Write(", \"logger\": ")
+		sw.WriteJSONString(l.name)
+	}
 	sw.Write(", \"message\": ")
 	sw.WriteJSONString(message)
 
